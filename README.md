@@ -1,2 +1,2 @@
 # Blog
-Notes for an R blog
+I will eventually write these into a blog...
