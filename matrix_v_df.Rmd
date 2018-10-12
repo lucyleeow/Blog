@@ -1,0 +1,31 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Must faster when doing this in a matrix
+```{r}
+system.time(expr = {
+  df_median <- data %>% 
+    select(starts_with("Meta"),
+           starts_with("Median")) %>%
+    group_by(Metadata_PlateID, Metadata_WellID) %>%
+    summarise_at(vars(starts_with("Median")), 
+                 median, na.rm = TRUE)
+})
+```
+
+```{r}
+system.time(expr = {
+  test2 <- data %>%
+    select(starts_with("Count"))
+  
+  b <- apply(test2, 2, function(x) colSums(matrix(x, nrow = 12)))
+})
+```
+
+The reasons are still unclear to me.
+
+* apparently the same data as a matrix is smaller than as a dataframe. 
+[SO](https://stackoverflow.com/questions/5158790/should-i-use-a-data-frame-or-a-matrix)
+* matrix only allows the same data type - thus less checking to do??

@@ -1,0 +1,254 @@
+---
+title: 'dplyr: _all(), _at(), _if()'
+author: "Lucy Liu"
+output:
+  html_document:
+    df_print: paged
+---
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+```
+
+```{r, echo=FALSE}
+knitr::opts_chunk$set(error = TRUE)
+```
+
+# Introduction
+There are some less well known 'advanced' dplyr versions of the `mutate()`, `select()` and `filter()` functions.
+
+I'll use the `iris` dataset to demonstrate - because it's well known, small and simple.
+
+# mutate
+`mutate()` adds new columns to the end of your dataframe (df):
+```{r}
+iris %>%
+  mutate(newcol = Petal.Length * 10) %>%
+  head()
+```
+
+## mutate_at()
+`mutate_at()` is used to perform a function on several columns at once. The syntax goes like this:
+
+* Tell it which columns you want to 'transform'. You can use `c("col", "col2")` and refer to column names as strings or use `vars()` to select columns. 
+    + `vars()` understands the same specifications as `select()` e.g. `-c(col)`, `starts_with()`, `contains()`. There is NO need to quote column names within `vars()` as 'these arguments are     automatically quoted and later evaluated in the context of the data frame' - see [non-standard evaluation](https://dplyr.tidyverse.org/articles/programming.html) and [vars](https://dplyr.tidyverse.org/reference/vars.html) for more information
+* Tell it the function you want to perform
+
+When you only want to perform one function, you can get it to just replace the old columns:
+```{r}
+iris %>%
+  mutate_at(vars(starts_with("Petal")), log) %>%
+  head()
+```
+
+
+Here the columns Petal.Length and Petal.Width are now logs of the old columns.
+
+If instead you wanted to add new columns to the end, use `funs()`:
+
+```{r}
+iris %>%
+  mutate_at(vars(starts_with("Petal")), 
+            funs(log = log(.))) %>%
+  head()
+```
+
+Note that we now need to use the `.` notation within `funs()`. The dot is a placeholder and refers to the columns selected using `vars()`.
+
+Using `funs()` you can also perform several functions:
+```{r}
+iris %>%
+  mutate_at(vars("Petal.Width"), funs(
+    norm = ./mean(.),
+    log = log(.)
+  )) %>%
+  head()
+```
+
+A complex example involves dividing the selected columns by the median of just the rows (of the selected column) of the `Species` 'setosa`.
+```{r}
+iris %>%
+  mutate_at(vars(starts_with("Sepal")),
+            funs(./median(.[Species == "setosa"]))) %>%
+  head()
+```
+
+The above function demonstrates the meaning of the `.` well. Notice the error that we get if we were to use `$` instead:
+
+```{r}
+iris %>%
+  mutate_at(vars(starts_with("Sepal")),
+            funs(./median(.$Species == "setosa"))) %>%
+  head()
+```
+
+This error says that the `.` is an atomic vector. This means the `.` is referring to one 'selected' columm at a time and that selected column is in the form of an atomic vector and NOT a dataframe/tibble. 
+
+## mutate_if()
+This lets you select columns using a condition. It is useful for converting all column of one data type to another data type:
+
+```{r}
+iris %>%
+  mutate_if(is.character, as.factor) %>%
+  str()
+```
+
+This has converted the `Species` column from character to factor.
+
+If you have a more complicated function, you can:
+
+1. Wrap the function in an anonymous function
+2. Use the tilde `~` which means the same thing 
+ref: [SO](https://stackoverflow.com/questions/49764273/mutate-if-syntax-help-how-to-add-in-parameter-for-function-on-predicate-condit)
+
+Note that the `.predicate` argument is passed to rlang::as_function(), which is why you can use the function name only without brackets and apparently 'strings representing function names'.
+
+```{r}
+iris %>%
+  select(-Species) %>%
+  mutate_if((function(x) max(x) > 3), log)
+```
+
+Here the columns we are selecting are ones where the max value is greater than 3. The function we are performing is `log()`.
+
+If you want to test multiple conditions, I suggest you write your own function:
+```{r}
+testfun <- function(x){
+  
+  max(x)>3 & min(x) > 1
+  
+}
+
+iris %>%
+  select(-Species) %>%
+  mutate_if(testfun, log) %>%
+  head()
+```
+
+I could not work out how to test several functions within the `mutate_if()` synatax. See error:
+
+```{r}
+iris %>%
+  select(-Species) %>%
+  mutate_if(is.double & is.numeric, log)
+```
+
+
+## mutate_all()
+No selection of columns required here! Your function will be performed on all columns.
+
+```{r}
+iris %>%
+  select(-Species) %>%
+  mutate_all(log) %>%
+  head()
+```
+
+
+# summarise
+
+## summarise_at()
+`summarise_at()` works similarly to `mutate_at()`:
+
+* again, select the columns you wish to summarise using `c('colname')` or `vars()`
+* specify the function you want performed, using `funs()` when you want several functions or
+
+```{r}
+iris %>%
+  summarise_at(vars(starts_with("Petal")), mean)
+```
+
+Note that you can ONLY use functions which return a single length vector, as the aim of the `summarise-` functions is to summarise into 1 value. For example, you could not use `log()`:
+```{r}
+iris %>%
+  summarise_at(vars(starts_with("Petal")), log)
+```
+
+When you put the function in `funs()`, the names of the output columns are changed to add your column name (specified on the LHS of your function) to the end of your column name.
+
+```{r}
+iris %>%
+  summarise_at(vars(starts_with("Petal")), 
+               funs(mean = mean(.)))
+```
+
+You can also add `group_by()` to the chain:
+```{r}
+iris %>%
+  group_by(Species) %>%
+  summarise_at(vars(starts_with("Petal")), funs(mean, median))
+```
+
+Note how the function name is added to the end of each column to specify which function has been formed on each of your columns.
+
+## summarise_if()
+Like above, select your column(s) by specifying a condition and then tell it what function you want to perform.
+```{r}
+iris %>%
+  group_by(Species) %>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)
+```
+
+Note that you can pass arguments to your function using the `...` argument of `summarise_if()`. Also notice how your column names have not changed.
+
+If we use `funs()` AND add a LHS to the function, they will change:
+```{r}
+iris %>%
+  group_by(Species) %>%
+  summarise_if(is.numeric, funs(mean = mean(.)))
+```
+
+## summarise_all()
+Again, your function(s) are performed on all your columns.
+```{r}
+iris %>%
+  group_by(Species) %>%
+  summarise_all(mean)
+```
+
+# filter
+
+## filter_at()
+Similar to above, select the columns to filter on using `c('colname')` or `vars()`, then specify your condition.
+
+You condition must be wrapped in `all_vars()` or `any_vars()`. This is because, while `filter()` checked if only one column met your condition, `filter_at()` checks several columns. It then returns the results for every column. As suggested by the name `all_vars()` returns `TRUE` for a row only if the condition is met in all selected columns and `any_vars()` returns `TRUE` if the condition is met in any of the selected columns.
+
+Let's have a look at the function in action:
+```{r}
+iris %>%
+  filter_at(vars(starts_with("Petal")), 
+            any_vars(. > 2)) %>%
+  head()
+```
+
+Note how we have to use the `.` again. This placeholder refers to the values in each selected column, one at a time.
+
+## filter_if()
+Like before, select the columns on which you wish to apply your filtering condition, using your column selecting condition. Then your row filtering condition will be applied to all columns that meet your column selecting condition. The functions `all_vars()` or `any_vars()` must be used to specify if the row filtering condition needs to be met in at least one column or all columns before the row is returned.
+
+An example:
+```{r}
+iris %>%
+  filter_if(is.numeric, all_vars(. > 1)) %>%
+  head()
+```
+
+Here we are filtering on all columns that are of the numeric data type. Then we want the row value to be at least 1 in all of the chosen columns.
+
+## filter_all()
+As above, this uses all the columns. Thus the condition must be met in ALL columns for the row to be returned.
+```{r}
+iris %>%
+  select(-Species) %>%
+  filter_all(any_vars(. > 5))
+```
+
+Here we are filtering on every column. In one row, if any value is greater tnan 5, the row will be returned.
+
+
+# References
+
+* [Tidyverse documentation](https://dplyr.tidyverse.org/reference/index.html)
+* Sizan Baert's [blog](https://suzan.rbind.io/categories/tutorial/)
+
+
+
