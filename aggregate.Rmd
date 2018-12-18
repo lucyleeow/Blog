@@ -89,3 +89,8 @@ summarise_PerWell <- function(
   
 }
 ```
+
+```{r}
+# try tapply
+```
+
