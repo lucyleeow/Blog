@@ -1,0 +1,17 @@
+--- 
+title: "Visualisation in R"
+author: "Lucy Liu"
+date: "`r Sys.Date()`"
+site: bookdown::bookdown_site
+output: bookdown::gitbook
+documentclass: book
+# bibliography: [book.bib, packages.bib]
+# biblio-style: apalike
+# link-citations: yes
+github-repo: lucyleeow/R_notes
+description: "Notes on visualisation in R."
+---
+
+# Introduction
+
+These are my notes on visualisations in R.
