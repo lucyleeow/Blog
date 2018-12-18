@@ -1,0 +1,41 @@
+---
+title: "Merging"
+output: html_notebook
+---
+
+```{r}
+system.time(expr = {
+test <- merge(data_PerWell, annot, by.x = c("Annot_PlateID","Metadata_WellID"), 
+              by.y = c("VCFG_Compound_Plate_ID","Metadata_WellID"), 
+              all.x = TRUE)
+})
+```
+
+ user  system elapsed 
+  0.138   0.046   0.219 
+  
+```{r}
+system.time(expr = {
+test <- merge(
+  as.data.table(data_PerWell), as.data.table(annot), by.x = c("Annot_PlateID","Metadata_WellID"), by.y = c("VCFG_Compound_Plate_ID","Metadata_WellID"), all.x = TRUE)
+})
+```
+
+
+```{r}
+system.time(expr = {
+a <- as.data.table(data_PerWell)[as.data.table(annot), on=c("Annot_PlateID" = "VCFG_Compound_Plate_ID")]
+})
+```
+
+```{r}
+a <- as.data.table(data_PerWell[1:10,c(1:4,609)])
+b <- as.data.table(annot[1:10,])
+
+
+system.time(expr = {
+c <- as.data.table(data_PerWell)[as.data.table(annot), on = c("Annot_PlateID" = "VCFG_Compound_Plate_ID", "Metadata_WellID")]
+})
+
+```
+
