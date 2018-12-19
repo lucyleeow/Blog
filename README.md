@@ -1,2 +1,3 @@
-# R Notes
-Notes on R. To be clean up eventually...
+# R Blog
+
+R blog notes - to be written eventually.
